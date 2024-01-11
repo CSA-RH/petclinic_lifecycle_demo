@@ -1,0 +1,11 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:  
+  name: petclinic-web-edge
+spec:
+  host: petclinic-edge.<YOUR_CUSTOM_DOMAIN_HERE>
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: petclinic-web 

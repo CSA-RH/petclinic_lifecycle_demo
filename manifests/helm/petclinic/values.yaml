@@ -1,0 +1,29 @@
+Web:  
+  replicaCount: 1
+  image: 
+    base: quay.io/rh-ee-apalma/petclinic
+    tag: v1
+  service: 
+    type: NodePort
+    name: petclinic-web
+    protocol: TCP
+    port: 8080
+    nodePort: 30080
+
+Database:
+  name: petclinic
+  user: petclinic
+  password: petclinic
+  rootPassword: petclinic
+  service:
+    name: petclinic-db
+    type: ClusterIP
+    port: 3306
+    protocol: TCP
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80

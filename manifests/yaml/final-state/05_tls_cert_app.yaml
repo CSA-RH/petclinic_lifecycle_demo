@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  tls.crt: <WEBSITE_CERTIFICATE_HERE>
+  tls.key: <WEBSITE_KEY_HERE>
+kind: Secret
+metadata:  
+  labels:
+    customdomains.managed.openshift.io/managed: abelardopalma
+  name: website-tls
+type: kubernetes.io/tls

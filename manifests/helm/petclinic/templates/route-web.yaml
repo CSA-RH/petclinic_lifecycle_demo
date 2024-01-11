@@ -1,0 +1,14 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: {{ include "petclinic.fullname" . }}
+    component:  {{ .Values.Database.service.name }}
+    {{- include "petclinic.labels" . | nindent 4 }}
+  name:  {{ .Values.Web.service.name }}
+spec:
+  port:
+    targetPort: {{ .Values.Web.service.port }}
+  to:
+    kind: Service
+    name: {{ .Values.Web.service.name }}

@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: petclinic
+    app.kubernetes.io/instance: petclinic-k8s
+    component: petclinic-web
+  name: petclinic-web-pt
+spec:
+  host: petclinic-ssl.<YOUR_CUSTOM_DOMAIN_HERE>
+  tls:
+    termination: passthrough
+  port:
+    targetPort: 8443
+  to:
+    kind: Service
+    name: petclinic-web

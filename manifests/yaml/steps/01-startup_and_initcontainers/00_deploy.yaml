@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-db
+  labels:
+    app: petclinic
+    component: petclinic-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: petclinic-db
+  template:
+    metadata:
+      labels:
+        app: petclinic
+        component: petclinic-db
+    spec:
+      containers:
+      - name: petclinic-mysql
+        image: registry.redhat.io/rhel8/mysql-80@sha256:c9af2fc27bcbd448e7ccafea011bb2d2078d4d8ae8814a75812707b0e4eb9135
+        env: 
+        - name: MYSQL_ROOT_PASSWORD
+          value: petclinic
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        - name: MYSQL_USER
+          value: petclinic
+        - name: MYSQL_PASSWORD
+          value: petclinic
+        - name: MYSQL_DATABASE
+          value: petclinic
+        ports:
+        - containerPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-web
+  labels:
+    app: petclinic
+    component: petclinic-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: petclinic-web      
+  template:
+    metadata:
+      labels:
+        app: petclinic
+        component: petclinic-web
+    spec:
+      containers:
+      - name: petclinic
+        env: 
+        - name: MYSQL_URL
+          value: jdbc:mysql://petclinic-db/petclinic
+        - name: MYSQL_USER  
+          value: petclinic
+        - name: MYSQL_PASS
+          value: petclinic
+        image: quay.io/rh-ee-apalma/petclinic:v1
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+      initContainers:
+      - name: check-mysql
+        image: busybox:1.31
+        env:
+        - name: MYSQL_DB_SVC
+          value: petclinic-db
+        command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z $MYSQL_DB_SVC 3306; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']

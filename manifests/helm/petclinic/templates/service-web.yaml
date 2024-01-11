@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ include "petclinic.fullname" . }}
+    component:  {{ .Values.Web.service.name }}
+    {{- include "petclinic.labels" . | nindent 4 }}
+  name:  {{ .Values.Web.service.name }}
+spec:
+  type: {{ .Values.Web.service.type }}
+  ports:
+  - port:  {{ .Values.Web.service.port }}
+    protocol:  {{ .Values.Web.service.protocol }}
+    targetPort: {{ .Values.Web.service.port }}
+    {{- if eq .Values.Web.service.type "NodePort"}}
+    nodePort: {{ .Values.Web.service.nodePort }}
+    {{- end }}
+  selector:
+    component:  {{ .Values.Web.service.name }}

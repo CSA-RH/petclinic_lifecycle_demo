@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.Database.service.name }}
+  labels:
+    app: {{ include "petclinic.fullname" . }}
+    component: {{ .Values.Database.service.name }}
+    {{- include "petclinic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: {{ .Values.Database.service.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "petclinic.fullname" . }}
+        component: {{ .Values.Database.service.name }}
+        {{- include "petclinic.labels" . | nindent 4 }}
+    spec:
+      containers:
+      - name: petclinic-mysql
+        image: mysql:latest
+        env: 
+        - name: MYSQL_ROOT_PASSWORD
+          value: {{ .Values.Database.rootPassword }}
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        - name: MYSQL_USER
+          value: {{ .Values.Database.user }}
+        - name: MYSQL_PASSWORD
+          value: {{ .Values.Database.password }}
+        - name: MYSQL_DATABASE
+          value: {{ .Values.Database.name }}
+        ports:
+        - containerPort: {{ .Values.Database.service.port }}

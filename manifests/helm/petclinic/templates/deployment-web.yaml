@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.Web.service.name }}
+  labels:
+    app: {{ include "petclinic.fullname" . }}
+    component: {{ .Values.Web.service.name }}
+    {{- include "petclinic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: {{ .Values.Web.service.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "petclinic.fullname" . }}
+        component: {{ .Values.Web.service.name }}
+    spec:
+      containers:
+      - name: {{ include "petclinic.fullname" . }}
+        image: {{ .Values.Web.image.base }}:{{ .Values.Web.image.tag }}
+        env: 
+        - name: MYSQL_URL
+          value: jdbc:mysql://{{ .Values.Database.service.name }}/{{ .Values.Database.name }}
+        ports:
+        - containerPort: {{ .Values.Web.service.port }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.Web.service.port }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.Web.service.port }}
+      initContainers:
+      - name: check-mysql
+        image: busybox:1.31
+        env:
+        - name: MYSQL_DB_SVC
+          value: {{ .Values.Database.service.name }}
+        command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z $MYSQL_DB_SVC 3306; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']

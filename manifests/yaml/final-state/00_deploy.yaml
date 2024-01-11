@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-db
+  labels:
+    app: petclinic
+    component: petclinic-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: petclinic-db
+  template:
+    metadata:
+      labels:
+        app: petclinic
+        component: petclinic-db
+    spec:
+      containers:
+      - name: petclinic-mysql
+        image: registry.redhat.io/rhel8/mysql-80@sha256:c9af2fc27bcbd448e7ccafea011bb2d2078d4d8ae8814a75812707b0e4eb9135
+        env: 
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: petclinic-mysql-creds
+              key: mysql-admin-password
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "true"
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: mysql-user
+        - name: MYSQL_PASSWORD
+          valueFrom: 
+            secretKeyRef: 
+              name: petclinic-mysql-creds
+              key: mysql-password
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: mysql-database
+        ports:
+        - containerPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-web
+  labels:
+    app: petclinic
+    component: petclinic-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: petclinic-web      
+  template:
+    metadata:
+      labels:
+        app: petclinic
+        component: petclinic-web
+    spec:
+      containers:
+      - name: petclinic
+        env: 
+        - name: MYSQL_URL
+          value: jdbc:mysql://petclinic-db/petclinic
+        - name: MYSQL_USER  
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: mysql-user
+        - name: MYSQL_PASS
+          valueFrom: 
+            secretKeyRef: 
+              name: petclinic-mysql-creds
+              key: mysql-password
+        image: quay.io/rh-ee-apalma/petclinic:v1-ssl
+        ports:
+        - containerPort: 8443
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 10
+        volumeMounts:
+        - mountPath: /tmp/tls
+          name: keystore-volume
+      initContainers:
+      - name: check-mysql
+        image: busybox:1.31
+        env:
+        - name: MYSQL_DB_SVC
+          value: petclinic-db
+        command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z $MYSQL_DB_SVC 3306; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']
+      - name: pem-to-keystore
+        args:
+        - -c
+        - openssl pkcs12 -export -inkey $keyfile -in $crtfile -out $keystore_pkcs12
+          -password pass:$password && keytool -importkeystore -noprompt -srckeystore
+          $keystore_pkcs12 -srcstoretype pkcs12 -destkeystore $keystore_jks -storepass
+          $password -srcstorepass $password
+        command:
+        - /bin/bash
+        env:
+        - name: keyfile
+          value: /var/run/secrets/openshift.io/services_serving_certs/tls.key
+        - name: crtfile
+          value: /var/run/secrets/openshift.io/services_serving_certs/tls.crt
+        - name: keystore_pkcs12
+          value: /tmp/tls/keystore.pkcs12
+        - name: keystore_jks
+          value: /tmp/tls/keystore.jks
+        - name: password
+          value: password
+        image: registry.access.redhat.com/redhat-sso-7/sso71-openshift:1.1-16
+        imagePullPolicy: IfNotPresent        
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /tmp/tls
+          name: keystore-volume
+        - mountPath: /var/run/secrets/openshift.io/services_serving_certs
+          name: hal-tls
+      volumes:
+      - name: hal-tls
+        secret:
+          defaultMode: 420
+          secretName: abelardopalma-tls
+      - emptyDir: {}
+        name: keystore-volume
